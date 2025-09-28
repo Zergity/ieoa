@@ -34,7 +34,7 @@ contract InheritableEOARealEIP7702Test is Test {
     MockBlockHashRecorder mockRecorder;
     
     // Test accounts
-    uint256 constant EOA_PRIVATE_KEY = 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef;
+    uint256 constant EOA_PRIVATE_KEY = 0x1;
     address eoaAddress;
     address inheritor = address(0x123);
     uint32 testDelay = 86400; // 1 day
@@ -160,7 +160,7 @@ contract InheritableEOARealEIP7702Test is Test {
 
     function testRealEIP7702MultipleEOAs() public {
         // Create second EOA
-        uint256 secondPrivateKey = 0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890;
+        uint256 secondPrivateKey = 0x2;
         address secondEoa = vm.addr(secondPrivateKey);
         vm.deal(secondEoa, 10 ether);
         
@@ -560,7 +560,7 @@ contract InheritableEOARealEIP7702Test is Test {
         sendTxInputs[3] = "--value";
         sendTxInputs[4] = "1";
         sendTxInputs[5] = "--private-key";
-        sendTxInputs[6] = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // First Anvil account private key
+        sendTxInputs[6] = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // Anvil account #0 private key
         sendTxInputs[7] = "--rpc-url";
         sendTxInputs[8] = "http://localhost:8545";
         
@@ -683,12 +683,15 @@ contract InheritableEOARealEIP7702Test is Test {
         // Use the first Anvil account which has transactions and a nonce
         address realAccount = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266;
         
+        // Convert block number to hex string format that Anvil expects
+        string memory blockHex = _uintToHexString(blockNumber);
+        
         // Get block header for specified block
         string[] memory blockInputs = new string[](7);
         blockInputs[0] = "cast";
         blockInputs[1] = "rpc";
         blockInputs[2] = "eth_getBlockByNumber";
-        blockInputs[3] = vm.toString(blockNumber);
+        blockInputs[3] = blockHex;
         blockInputs[4] = "false";
         blockInputs[5] = "--rpc-url";
         blockInputs[6] = "http://localhost:8545";
@@ -711,7 +714,7 @@ contract InheritableEOARealEIP7702Test is Test {
         proofInputs[2] = "eth_getProof";
         proofInputs[3] = vm.toString(realAccount);
         proofInputs[4] = "[]";
-        proofInputs[5] = vm.toString(blockNumber);
+        proofInputs[5] = blockHex;
         proofInputs[6] = "--rpc-url";
         proofInputs[7] = "http://localhost:8545";
         
@@ -738,5 +741,35 @@ contract InheritableEOARealEIP7702Test is Test {
             nonce: accountNonce,
             proof: realProof
         });
+    }
+
+    // Helper function to convert uint to hex string
+    function _uintToHexString(uint256 value) private pure returns (string memory) {
+        if (value == 0) {
+            return "0x0";
+        }
+        
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 16;
+        }
+        
+        bytes memory buffer = new bytes(2 + digits);
+        buffer[0] = "0";
+        buffer[1] = "x";
+        
+        for (uint256 i = buffer.length - 1; i >= 2; i--) {
+            uint256 remainder = value % 16;
+            if (remainder < 10) {
+                buffer[i] = bytes1(uint8(48 + remainder));
+            } else {
+                buffer[i] = bytes1(uint8(87 + remainder));
+            }
+            value /= 16;
+        }
+        
+        return string(buffer);
     }
 }

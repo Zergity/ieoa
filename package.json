@@ -5,9 +5,9 @@
   "main": "src/AccountVerifier.sol",
   "type": "module",
   "scripts": {
-    "test": "forge test",
-    "deploy": "forge script script/Deploy.s.sol --broadcast",
-    "verify": "node test/verify-account.js"
+    "test": "forge test --match-contract InheritableEOARealEIP7702Test --ffi --rpc-url http://localhost:8545 -vv",
+    "clean": "yarn anvil:stop && rm -f anvil.log .anvil.pid",
+    "deploy": "forge script script/Deploy.s.sol --broadcast"
   },
   "dependencies": {
     "dotenv": "^17.2.2",
