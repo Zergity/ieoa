@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {AccountTrie} from "./AccountTrie.sol";
-import {BareAccount} from "../lib/account-abstraction/contracts/core/BareAccount.sol";
+import {BareAccount} from "./account-abstraction/core/BareAccount.sol";
 
 /* solhint-disable avoid-low-level-calls */
 
