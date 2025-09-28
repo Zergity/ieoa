@@ -1,6 +1,7 @@
 # Foundry
 cache/
 out/
+anvil.log
 
 # Node.js
 node_modules/
