@@ -93,7 +93,7 @@ describe("InheritableEOA NonceChanged Test", function () {
         MerklePatricia: libraryAddresses.MerklePatricia,
       },
     });
-    inheritableEOA = await InheritableEOA.deploy();
+    inheritableEOA = await InheritableEOA.deploy(ethers.constants.AddressZero);
     
     console.log(`✅ InheritableEOA deployed at: ${inheritableEOA.address}`);
     
@@ -132,8 +132,7 @@ describe("InheritableEOA NonceChanged Test", function () {
       value: 0,
       data: inheritableEOA.interface.encodeFunctionData("setConfig", [
         inheritor.address,
-        DELAY_SECONDS,
-        ethers.constants.AddressZero
+        DELAY_SECONDS
       ]),
       authorizationList: [{
         chainId: authorization.chainId,
@@ -169,7 +168,7 @@ describe("InheritableEOA NonceChanged Test", function () {
       await ethers.provider.send("hardhat_setCode", [owner.address, contractCode]);
       
       const delegatedOwner = new ethers.Contract(owner.address, inheritableEOA.interface, owner);
-      await delegatedOwner.setConfig(inheritor.address, DELAY_SECONDS, ethers.constants.AddressZero);
+      await delegatedOwner.setConfig(inheritor.address, DELAY_SECONDS);
       
       // Copy storage back to contract
       for (let slot = 0; slot < 3; slot++) {

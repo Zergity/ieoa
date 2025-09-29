@@ -15,8 +15,8 @@ import {BareAccount} from "./account-abstraction/core/BareAccount.sol";
 contract InheritableEOA is BareAccount {
     using AccountTrie for *;
 
-    // Block hash recorder for verifying historical block data
-    address internal s_blockHashRecorder;
+    // Block hash recorder for verifying historical block data (set at deployment)
+    address public immutable BLOCK_HASH_RECORDER;
 
     // Storage variables that can only be changed by the EOA (address(this) in EIP-7702 context)
     address internal s_inheritor;
@@ -32,6 +32,14 @@ contract InheritableEOA is BareAccount {
     error InheritanceNotReady();
     error NonceChanged();
 
+    /**
+     * @dev Constructor to set the immutable block hash recorder
+     * @param blockHashRecorder Address of the block hash recorder contract
+     */
+    constructor(address blockHashRecorder) {
+        BLOCK_HASH_RECORDER = blockHashRecorder;
+    }
+
     // Modifier for EOA authorization
     modifier onlyEoa() {
         require(msg.sender == address(this), Unauthorized());
@@ -39,7 +47,7 @@ contract InheritableEOA is BareAccount {
     }
 
     // Events
-    event ConfigSet(address indexed inheritor, uint32 delay, address blockHashRecorder);
+    event ConfigSet(address indexed inheritor, uint32 delay);
     event NonceRecorded(uint64 nonce, uint64 timestamp);
     event InheritanceClaimed();
 
@@ -69,7 +77,7 @@ contract InheritableEOA is BareAccount {
             address(this),
             blockHeaderRlp,
             proof,
-            s_blockHashRecorder
+            BLOCK_HASH_RECORDER
         );
 
         // Check if we should update stored values
@@ -108,7 +116,7 @@ contract InheritableEOA is BareAccount {
             address(this),
             blockHeaderRlp,
             proof,
-            s_blockHashRecorder
+            BLOCK_HASH_RECORDER
         );
 
         // Check that enough time has passed
@@ -145,12 +153,11 @@ contract InheritableEOA is BareAccount {
     // ============ SETTERS & GETTERS ============
 
     /**
-     * @dev Set the inheritor, delay, and block hash recorder configuration. Can only be called by the EOA (address(this) in EIP-7702)
+     * @dev Set the inheritor and delay configuration. Can only be called by the EOA (address(this) in EIP-7702)
      * @param inheritor Address that can inherit the account after delay (ignored if zero)
      * @param delay Time in seconds that must pass with unchanged nonce before inheritance (ignored if zero)
-     * @param blockHashRecorder Address of the block hash recorder contract (ignored if zero)
      */
-    function setConfig(address inheritor, uint32 delay, address blockHashRecorder) public onlyEoa {
+    function setConfig(address inheritor, uint32 delay) public onlyEoa {
         if (inheritor != address(0)) {
             s_inheritor = inheritor;
         }
@@ -159,19 +166,7 @@ contract InheritableEOA is BareAccount {
             s_delay = delay;
         }
         
-        if (blockHashRecorder != address(0)) {
-            s_blockHashRecorder = blockHashRecorder;
-        }
-        
-        emit ConfigSet(s_inheritor, s_delay, s_blockHashRecorder);
-    }
-
-    /**
-     * @dev Get the block hash recorder address
-     * @return The address of the block hash recorder
-     */
-    function getBlockHashRecorder() public view returns (address) {
-        return s_blockHashRecorder;
+        emit ConfigSet(s_inheritor, s_delay);
     }
 
     /**
