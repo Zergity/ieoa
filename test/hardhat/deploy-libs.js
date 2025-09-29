@@ -10,7 +10,7 @@ async function deployLibraries() {
   // Deploy EthereumTrieDB first (it has no dependencies)
   const EthereumTrieDBLib = await ethers.getContractFactory("EthereumTrieDB");
   const ethereumTrieDBLib = await EthereumTrieDBLib.deploy();
-  const ethereumTrieDBAddress = await ethereumTrieDBLib.getAddress();
+  const ethereumTrieDBAddress = ethereumTrieDBLib.address;
   console.log(`✅ EthereumTrieDB deployed at: ${ethereumTrieDBAddress}`);
   
   // Deploy MerklePatricia with EthereumTrieDB linked
@@ -20,7 +20,7 @@ async function deployLibraries() {
     },
   });
   const merklePatriciaLib = await MerklePatriciaLib.deploy();
-  const merklePatriciaAddress = await merklePatriciaLib.getAddress();
+  const merklePatriciaAddress = merklePatriciaLib.address;
   console.log(`✅ MerklePatricia deployed at: ${merklePatriciaAddress}`);
   
   return {
