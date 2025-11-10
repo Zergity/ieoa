@@ -192,4 +192,9 @@ contract InheritableEOA is BareAccount {
     function getIsClaimed() public view returns (bool) {
         return s_claimed;
     }
+
+    /**
+     * @dev Allow contract to receive ETH
+     */
+    receive() external payable {}
 }
