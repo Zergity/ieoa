@@ -16,6 +16,13 @@ module.exports = {
       chainId: 31337,
       allowUnlimitedContractSize: true,
     },
+    anvil: {
+      url: "http://127.0.0.1:8545",
+      chainId: 1,
+      accounts: {
+        mnemonic: "test test test test test test test test test test test junk",
+      },
+    },
   },
   paths: {
     sources: "./src", // Use real contracts from src directory

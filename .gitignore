@@ -2,6 +2,7 @@
 cache/
 out/
 anvil.log
+.anvil.pid
 
 # Node.js
 node_modules/

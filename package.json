@@ -4,9 +4,13 @@
   "description": "A Solidity library contract that verifies an account's nonce, balance, and account state root against a given state root and Merkle proof, as well as a blockhash.",
   "main": "src/AccountVerifier.sol",
   "scripts": {
-    "test": "hardhat test",
+    "test": "bash scripts/anvil-manage.sh restart && hardhat test --network anvil; bash scripts/anvil-manage.sh stop",
     "test:forge": "forge test",
-    "test:nonce": "hardhat test test/hardhat/NonceChanged.test.js",
+    "test:nonce": "bash scripts/anvil-manage.sh restart && hardhat test test/hardhat/NonceChanged.test.js --network anvil; bash scripts/anvil-manage.sh stop",
+    "anvil": "anvil --chain-id 1",
+    "anvil:start": "bash scripts/anvil-manage.sh start",
+    "anvil:stop": "bash scripts/anvil-manage.sh stop",
+    "anvil:restart": "bash scripts/anvil-manage.sh restart",
     "deploy": "forge script script/Deploy.s.sol --broadcast"
   },
   "dependencies": {
@@ -20,7 +24,8 @@
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "chai": "^4.3.10",
     "forge-std": "git+https://github.com/foundry-rs/forge-std.git",
-    "hardhat": "^2.22.0"
+    "hardhat": "^2.22.0",
+    "rlp": "^3.0.0"
   },
   "license": "MIT",
   "directories": {
