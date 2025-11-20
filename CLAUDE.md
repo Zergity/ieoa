@@ -109,7 +109,7 @@ The project has a complete EIP-7702 implementation (see `EIP7702-IMPLEMENTATION.
 
 ## Testing Approach
 
-**Hardhat Tests** (`test/hardhat/NonceChanged.test.js`):
+**Hardhat Tests** (`test/hardhat/EIP7702-Delegation.test.js`):
 - Custom RLP encoder for block headers and arrays
 - Tests real blockchain state verification
 - Simulates EIP-7702 delegation (with fallback for unsupported environments)
@@ -139,7 +139,6 @@ The project has a complete EIP-7702 implementation (see `EIP7702-IMPLEMENTATION.
 
 ## Important Notes
 
-- The main contract name in README is "AccountVerifier" but the actual implementation is "InheritableEOA"
 - AccountTrie is a library, not a deployable contract
 - Storage variables use `s_` prefix convention
 - Uses Solidity 0.8.30 (Hardhat) and 0.8.0+ (contracts)
