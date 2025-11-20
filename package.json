@@ -6,8 +6,6 @@
   "scripts": {
     "test": "bash scripts/anvil-manage.sh restart && hardhat test --network anvil; bash scripts/anvil-manage.sh stop",
     "test:forge": "forge test",
-    "test:nonce": "bash scripts/anvil-manage.sh restart && hardhat test test/hardhat/NonceChanged.test.js --network anvil; bash scripts/anvil-manage.sh stop",
-    "anvil": "anvil --chain-id 1",
     "anvil:start": "bash scripts/anvil-manage.sh start",
     "anvil:stop": "bash scripts/anvil-manage.sh stop",
     "anvil:restart": "bash scripts/anvil-manage.sh restart",
