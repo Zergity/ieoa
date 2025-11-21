@@ -4,6 +4,16 @@ InheritableEOA is a Solidity contract designed to be delegated to by an EOA usin
 
 The project verifies account state (nonce, balance, storage root, code hash) against Ethereum's state root using Merkle Patricia Trie proofs and RLP decoding.
 
+## Why InheritableEOA?
+
+- **Zero disruption to normal usage** - The EOA continues to work exactly as before. Send transactions, sign messages, interact with dApps - nothing changes. EIP-7702 delegation is purely additive.
+
+- **Automatic protection against hijacking** - Any regular activity from the EOA (sending a transaction, deploying a contract, etc.) increments the nonce and automatically invalidates any pending inheritance claims. Simply using your wallet cancels hijacking attempts.
+
+- **No trusted third parties** - Inheritance is verified entirely on-chain using Merkle Patricia Trie proofs against Ethereum's state root. No oracles, multisigs, or centralized services required.
+
+- **Configurable and revocable** - The EOA owner can change the inheritor, adjust the delay period, or clear the configuration entirely at any time.
+
 ## Project Structure
 
 - **src/**: Contains the main contract files.
@@ -67,12 +77,86 @@ npm run test:forge
 
 ## Usage
 
-The `InheritableEOA` contract implements the following key functions:
+### Contract Functions
 
-- **setConfig(address inheritor, uint256 delay)**: Configure the inheritor address and delay period (EOA only).
-- **record(bytes memory blockHeaderRlp, bytes[] memory proof)**: Record the account's nonce at a specific block using state proof.
-- **claim(bytes memory blockHeaderRlp, bytes[] memory proof)**: Claim inheritance by proving nonce unchanged after delay period.
-- **execute(address dest, uint256 value, bytes calldata func)**: Execute calls from the account (available to EOA or claimed inheritor).
+| Function | Description | Access |
+|----------|-------------|--------|
+| `setConfig(address inheritor, uint256 delay)` | Configure inheritor and delay period | EOA only |
+| `getConfig()` | Returns `(address inheritor, uint256 delay)` | Public |
+| `record(bytes blockHeaderRlp, bytes[] proof)` | Record account nonce at a specific block | Anyone |
+| `claim(bytes blockHeaderRlp, bytes[] proof)` | Claim inheritance after delay period | Anyone |
+| `recordAndClaim(...)` | Record and claim in one transaction | Anyone |
+| `execute(address dest, uint256 value, bytes func)` | Execute calls from the account | EOA or claimed inheritor |
+| `isClaimed()` | Check if inheritance has been claimed | Public |
+
+### Inheritance Flow
+
+#### Step 1: Delegate EOA to InheritableEOA (EIP-7702)
+
+```bash
+# Using Foundry's cast with EIP-7702 authorization
+cast send $EOA_ADDRESS --auth $INHERITABLE_EOA_CONTRACT \
+  --private-key $EOA_PRIVATE_KEY --rpc-url $RPC_URL
+```
+
+After delegation, the EOA address behaves as the InheritableEOA contract while retaining EOA capabilities.
+
+#### Step 2: Configure Inheritance (EOA only)
+
+```solidity
+// Call from the EOA itself (msg.sender == address(this) in EIP-7702 context)
+InheritableEOA(eoaAddress).setConfig(inheritorAddress, delayInSeconds);
+
+// To clear configuration, pass zero values for both
+InheritableEOA(eoaAddress).setConfig(address(0), 0);
+```
+
+#### Step 3: Record Initial State
+
+Anyone can call `record()` with a valid block header and Merkle proof to record the account's nonce at that block:
+
+```javascript
+// Get block data and account proof
+const block = await provider.getBlock(blockNumber);
+const proof = await provider.send("eth_getProof", [eoaAddress, [], blockNumber]);
+
+// Encode block header as RLP
+const blockHeaderRlp = encodeBlockHeader(block);
+
+// Record the state
+await contract.record(blockHeaderRlp, proof.accountProof);
+```
+
+#### Step 4: Claim Inheritance
+
+After the delay period has passed and the account nonce remains unchanged:
+
+```javascript
+// Get recent block data and proof
+const recentBlock = await provider.getBlock(recentBlockNumber);
+const recentProof = await provider.send("eth_getProof", [eoaAddress, [], recentBlockNumber]);
+
+// Claim inheritance (proves nonce unchanged over delay period)
+await contract.connect(inheritor).claim(recentBlockHeaderRlp, recentProof.accountProof);
+```
+
+If successful, the inheritor can now call `execute()` to control the account.
+
+### Old Blocks (Beyond 256 Block Limit)
+
+The `blockhash()` opcode only works for the most recent 256 blocks. For older blocks, use `BlockHashRecorder`:
+
+```solidity
+// Record block hash while block is still recent (within 256 blocks)
+BlockHashRecorder(recorder).record(blockNumber);
+
+// Later, record() and claim() will automatically use BlockHashRecorder
+// when blockhash() returns 0 for blocks older than 256 blocks
+```
+
+### Protection Against Premature Inheritance
+
+If the EOA sends any transaction (changing its nonce), the inheritance claim will fail with `NonceChanged` error. This ensures the original owner can always prevent inheritance by simply using their account.
 
 For detailed EIP-7702 implementation details, see `EIP7702-IMPLEMENTATION.md`.
 
