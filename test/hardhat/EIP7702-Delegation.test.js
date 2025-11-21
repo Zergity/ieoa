@@ -92,10 +92,10 @@ describe("EIP-7702 Delegation Test", function () {
       // Step 2: Now call setConfig on the delegated contract directly with ethers.js
       console.log("\nStep 2: Calling setConfig on delegated contract...");
       // Create contract instance at owner's address (where the code is delegated)
-      const delegatedContract = await ethers.getContractAt("InheritableEOA", owner.address);
+      const ieoa = await ethers.getContractAt("InheritableEOA", owner.address);
 
       // Call setConfig from owner - this works because msg.sender == address(this)
-      const tx = await delegatedContract.connect(owner).setConfig(inheritor.address, delay);
+      const tx = await ieoa.connect(owner).setConfig(inheritor.address, delay);
       await tx.wait();
 
       console.log("\n✅ setConfig transaction confirmed");
@@ -208,13 +208,13 @@ describe("EIP-7702 Delegation Test", function () {
 
   it("should allow interaction with delegated contract", async function () {
     // After delegation, the owner address behaves as the InheritableEOA contract
-    const delegatedContract = await ethers.getContractAt(
+    const ieoa = await ethers.getContractAt(
       "InheritableEOA",
       owner.address
     );
 
     // Get configuration values
-    const [inheritorAddr, delayValue] = await delegatedContract.getConfig();
+    const [inheritorAddr, delayValue] = await ieoa.getConfig();
 
     console.log("\n=== Delegated Contract Interaction ===");
     console.log("Reading from owner address as InheritableEOA contract");
@@ -258,8 +258,8 @@ describe("EIP-7702 Delegation Test", function () {
 
     // Step 2: Configure inheritor and delay
     console.log("\n--- Step 2: Configure Inheritance ---");
-    const delegatedContract = await ethers.getContractAt("InheritableEOA", testOwner.address);
-    const configTx = await delegatedContract.connect(testOwner).setConfig(testInheritor.address, delay);
+    const ieoa = await ethers.getContractAt("InheritableEOA", testOwner.address);
+    const configTx = await ieoa.connect(testOwner).setConfig(testInheritor.address, delay);
     await configTx.wait();
     console.log("✅ Configuration set (inheritor:", testInheritor.address, "delay:", delay, "seconds)");
 
@@ -312,7 +312,7 @@ describe("EIP-7702 Delegation Test", function () {
 
     // Call record() function with manual gas limit to skip estimation
     try {
-      const recordTx = await delegatedContract.record(recordBlockRlp, recordProof.accountProof, {
+      const recordTx = await ieoa.record(recordBlockRlp, recordProof.accountProof, {
         gasLimit: 500000
       });
       await recordTx.wait();
@@ -325,7 +325,7 @@ describe("EIP-7702 Delegation Test", function () {
       return null;
     }
 
-    return { testOwner, testInheritor, delegatedContract, delay };
+    return { testOwner, testInheritor, ieoa, delay };
   }
 
   it("should successfully inherit EOA when nonce remains unchanged", async function () {
@@ -335,7 +335,7 @@ describe("EIP-7702 Delegation Test", function () {
     const setup = await setupInheritanceTest(this);
     if (!setup) return; // Skip if setup failed
 
-    const { testOwner, testInheritor, delegatedContract, delay } = setup;
+    const { testOwner, testInheritor, ieoa, delay } = setup;
 
     // Step 4: Advance time past the delay period (NO nonce change - account inactive)
     console.log("\n--- Step 4: Advance Time (No Account Activity) ---");
@@ -376,7 +376,7 @@ describe("EIP-7702 Delegation Test", function () {
     // Claim inheritance should SUCCEED
     console.log("\nAttempting to claim with unchanged nonce...");
     try {
-      const claimTx = await delegatedContract.connect(testInheritor).claim(claimBlockRlp, claimProof.accountProof, {
+      const claimTx = await ieoa.connect(testInheritor).claim(claimBlockRlp, claimProof.accountProof, {
         gasLimit: 500000
       });
       await claimTx.wait();
@@ -391,7 +391,7 @@ describe("EIP-7702 Delegation Test", function () {
     console.log("\n--- Step 6: Verify Inheritor Control ---");
 
     // Check claim status
-    const isClaimed = await delegatedContract.isClaimed();
+    const isClaimed = await ieoa.isClaimed();
     expect(isClaimed).to.be.true;
     console.log("Claimed status:", isClaimed);
 
@@ -399,7 +399,7 @@ describe("EIP-7702 Delegation Test", function () {
     const recipient = deployer.address;
     const amount = ethers.utils.parseEther("0.1");
 
-    const executeTx = await delegatedContract.connect(testInheritor).execute(
+    const executeTx = await ieoa.connect(testInheritor).execute(
       recipient,
       amount,
       "0x"
@@ -444,8 +444,8 @@ describe("EIP-7702 Delegation Test", function () {
 
     // Step 2: Configure inheritor and delay
     console.log("\n--- Step 2: Configure Inheritance ---");
-    const delegatedContract = await ethers.getContractAt("InheritableEOA", testOwner.address);
-    const configTx = await delegatedContract.connect(testOwner).setConfig(testInheritor.address, delay);
+    const ieoa = await ethers.getContractAt("InheritableEOA", testOwner.address);
+    const configTx = await ieoa.connect(testOwner).setConfig(testInheritor.address, delay);
     await configTx.wait();
     console.log("✅ Configuration set");
 
@@ -518,7 +518,7 @@ describe("EIP-7702 Delegation Test", function () {
     console.log("Calling record() with block", targetBlockNum, "(", newBlockNum - targetBlockNum, "blocks old)");
 
     try {
-      const recordTx = await delegatedContract.record(targetBlockRlp, targetProof.accountProof, {
+      const recordTx = await ieoa.record(targetBlockRlp, targetProof.accountProof, {
         gasLimit: 500000
       });
       await recordTx.wait();
@@ -544,7 +544,7 @@ describe("EIP-7702 Delegation Test", function () {
     const setup = await setupInheritanceTest(this);
     if (!setup) return; // Skip if setup failed
 
-    const { testOwner, testInheritor, delegatedContract, delay } = setup;
+    const { testOwner, testInheritor, ieoa, delay } = setup;
 
     // Step 4: Advance time past the delay period
     console.log("\n--- Step 4: Advance Time ---");
@@ -603,7 +603,7 @@ describe("EIP-7702 Delegation Test", function () {
 
     // First try with callStatic to get the revert reason
     try {
-      await delegatedContract.connect(testInheritor).callStatic.claim(claimBlockRlp, claimProof.accountProof);
+      await ieoa.connect(testInheritor).callStatic.claim(claimBlockRlp, claimProof.accountProof);
       console.log("❌ UNEXPECTED: Call static succeeded - claim should fail!");
     } catch (staticError) {
       // Expected to fail - extract the revert reason
@@ -624,7 +624,7 @@ describe("EIP-7702 Delegation Test", function () {
 
     // Now send the actual transaction (should also fail)
     try {
-      const claimTx = await delegatedContract.connect(testInheritor).claim(claimBlockRlp, claimProof.accountProof, {
+      const claimTx = await ieoa.connect(testInheritor).claim(claimBlockRlp, claimProof.accountProof, {
         gasLimit: 500000
       });
       await claimTx.wait();
@@ -657,7 +657,7 @@ describe("EIP-7702 Delegation Test", function () {
     // Step 6: Verify inheritance was NOT claimed
     console.log("\n--- Step 6: Verify Protection Works ---");
 
-    const isClaimed = await delegatedContract.isClaimed();
+    const isClaimed = await ieoa.isClaimed();
     expect(isClaimed).to.be.false;
     console.log("Claimed status:", isClaimed);
     expect(claimFailed).to.be.true;
