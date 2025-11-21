@@ -6,7 +6,8 @@ test = "test"
 script = "script"
 remappings = [
     "solidity-merkle-trees/=lib/solidity-merkle-trees/src/",
-    "@openzeppelin/=lib/openzeppelin-contracts/"
+    "@openzeppelin/=lib/openzeppelin-contracts/",
+    "block-hash-recorder/=lib/block-hash-recorder/src/"
 ]
 evm_version = "prague"
 via_ir = true
@@ -14,7 +15,6 @@ optimizer = true
 optimizer_runs = 1000
 solidity-merkle-trees = { git = "https://github.com/polytope-labs/solidity-merkle-trees" }
 BlockVerifier = { git = "https://github.com/Zergity/uniswap-oracle", path = "contracts/source/BlockVerifier.sol" }
-BlockHashRecorder = { git = "https://github.com/Zergity/block-hash-recorder" }
 
 [lint]
 severity = ["gas"]

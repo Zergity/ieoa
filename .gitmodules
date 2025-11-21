@@ -7,8 +7,8 @@
     url = https://github.com/Zergity/uniswap-oracle.git
 
 [submodule "lib/block-hash-recorder"]
-    path = lib/block-hash-recorder
-    url = https://github.com/Zergity/block-hash-recorder.git
+	path = lib/block-hash-recorder
+	url = https://github.com/Zergity/block-hash-recorder.git
 [submodule "lib/openzeppelin-contracts"]
 	path = lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts

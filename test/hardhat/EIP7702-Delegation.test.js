@@ -5,6 +5,7 @@ const { execSync } = require("child_process");
 
 describe("EIP-7702 Delegation Test", function () {
   let inheritableEOA;
+  let blockHashRecorder;
   let owner;
   let inheritor;
   let deployer;
@@ -19,22 +20,30 @@ describe("EIP-7702 Delegation Test", function () {
     console.log("Inheritor:", inheritor.address);
   });
 
-  it("should deploy InheritableEOA contract", async function () {
-    // Deploy required libraries first
+  it("should deploy BlockHashRecorder and InheritableEOA contracts", async function () {
+    // Deploy BlockHashRecorder first
+    console.log("\n=== Deploying BlockHashRecorder ===");
+    const BlockHashRecorder = await ethers.getContractFactory("BlockHashRecorder");
+    blockHashRecorder = await BlockHashRecorder.deploy();
+    await blockHashRecorder.deployed();
+    console.log("BlockHashRecorder address:", blockHashRecorder.address);
+
+    // Deploy required libraries
     console.log("\n=== Deploying Libraries ===");
     const libraries = await deployLibraries();
 
-    // Deploy InheritableEOA with library linking
+    // Deploy InheritableEOA with library linking and BlockHashRecorder address
     const InheritableEOA = await ethers.getContractFactory("InheritableEOA", {
       libraries: {
         "src/solidity-merkle-trees/MerklePatricia.sol:MerklePatricia": libraries.MerklePatricia
       }
     });
-    inheritableEOA = await InheritableEOA.deploy(ethers.constants.AddressZero);
+    inheritableEOA = await InheritableEOA.deploy(blockHashRecorder.address);
     await inheritableEOA.deployed();
 
     console.log("\n=== Contract Deployed ===");
     console.log("InheritableEOA address:", inheritableEOA.address);
+    console.log("Using BlockHashRecorder:", await inheritableEOA.BLOCK_HASH_RECORDER());
   });
 
   it("should create EIP-7702 authorization and delegate EOA to contract", async function () {
@@ -407,6 +416,127 @@ describe("EIP-7702 Delegation Test", function () {
     console.log("   ✅ No account activity (nonce unchanged)");
     console.log("   ✅ Inheritance claimed successfully");
     console.log("   ✅ Inheritor can execute transactions");
+  });
+
+  it("should record with old block beyond 256 limit using BlockHashRecorder", async function () {
+    console.log("\n=== Record with Old Block (Beyond 256 Limit) ===");
+
+    const delay = 10; // 10 seconds
+
+    // Setup: Create a fresh EOA for testing
+    const testOwner = ethers.Wallet.createRandom().connect(ethers.provider);
+    const testInheritor = inheritor;
+
+    // Fund the test owner
+    await deployer.sendTransaction({
+      to: testOwner.address,
+      value: ethers.utils.parseEther("1.0")
+    });
+
+    console.log("\n--- Setup ---");
+    console.log("Test Owner:", testOwner.address);
+    console.log("BlockHashRecorder:", blockHashRecorder.address);
+
+    // Step 1: Delegate the test owner to InheritableEOA
+    console.log("\n--- Step 1: EIP-7702 Delegation ---");
+    const testOwnerPrivateKey = testOwner.privateKey;
+    const delegateCmd = `cast send ${testOwner.address} --auth ${inheritableEOA.address} --private-key ${testOwnerPrivateKey} --rpc-url http://127.0.0.1:8545 --value 0`;
+    execSync(delegateCmd, { encoding: 'utf-8', stdio: 'inherit' });
+    console.log("✅ Delegation complete");
+
+    // Step 2: Configure inheritor and delay
+    console.log("\n--- Step 2: Configure Inheritance ---");
+    const delegatedContract = await ethers.getContractAt("InheritableEOA", testOwner.address);
+    const configTx = await delegatedContract.connect(testOwner).setConfig(testInheritor.address, delay);
+    await configTx.wait();
+    console.log("✅ Configuration set");
+
+    // Step 3: Get the current block and record its hash in BlockHashRecorder (while recent)
+    console.log("\n--- Step 3: Record Block Hash in BlockHashRecorder ---");
+    await ethers.provider.send("evm_mine", []);
+
+    const currentBlockNum = await ethers.provider.getBlockNumber();
+    const targetBlockNum = currentBlockNum - 1;
+    console.log("Current block:", currentBlockNum);
+    console.log("Target block to record:", targetBlockNum);
+
+    // Get block data and proof BEFORE mining 256 blocks
+    const targetBlock = await ethers.provider.getBlock(targetBlockNum);
+    console.log("Target block hash:", targetBlock.hash);
+
+    const targetBlockRaw = await ethers.provider.send("eth_getBlockByNumber", [
+      ethers.utils.hexValue(targetBlockNum),
+      false
+    ]);
+
+    const targetProof = await ethers.provider.send("eth_getProof", [
+      testOwner.address,
+      [],
+      ethers.utils.hexValue(targetBlockNum)
+    ]);
+    console.log("Account nonce at target block:", targetProof.nonce);
+
+    const targetBlockRlp = encodeBlockHeaderSimple(targetBlockRaw);
+
+    // Verify hash matches
+    const calculatedHash = ethers.utils.keccak256(targetBlockRlp);
+    console.log("Calculated hash:", calculatedHash);
+    expect(calculatedHash.toLowerCase()).to.equal(targetBlock.hash.toLowerCase());
+    console.log("✅ Block header RLP encoded correctly");
+
+    // Record the block hash in BlockHashRecorder while block is still accessible
+    const recordHashTx = await blockHashRecorder.record(targetBlockNum);
+    await recordHashTx.wait();
+    console.log("✅ Block hash recorded in BlockHashRecorder");
+
+    // Verify the hash was recorded
+    const recordedHash = await blockHashRecorder.blockHash(targetBlockNum);
+    console.log("Recorded hash in BlockHashRecorder:", recordedHash);
+    expect(recordedHash.toLowerCase()).to.equal(targetBlock.hash.toLowerCase());
+
+    // Step 4: Mine 256+ blocks to make blockhash() return 0 for our target block
+    console.log("\n--- Step 4: Mine 256+ Blocks ---");
+    const blocksToMine = 260; // Beyond the 256 block limit
+    console.log("Mining", blocksToMine, "blocks...");
+
+    for (let i = 0; i < blocksToMine; i++) {
+      await ethers.provider.send("evm_mine", []);
+      if ((i + 1) % 50 === 0) {
+        console.log("  Mined", i + 1, "blocks");
+      }
+    }
+
+    const newBlockNum = await ethers.provider.getBlockNumber();
+    console.log("✅ Mining complete. Current block:", newBlockNum);
+    console.log("   Target block:", targetBlockNum, "is now", newBlockNum - targetBlockNum, "blocks old");
+
+    // Verify blockhash() returns 0 for the old block
+    // We can't directly call blockhash() from JS, but we know it will return 0
+    // for blocks more than 256 blocks ago
+    console.log("   (blockhash opcode will return 0 for blocks >256 old)");
+
+    // Step 5: Call record() with the OLD block - should use BlockHashRecorder
+    console.log("\n--- Step 5: Record with Old Block (Using BlockHashRecorder) ---");
+    console.log("Calling record() with block", targetBlockNum, "(", newBlockNum - targetBlockNum, "blocks old)");
+
+    try {
+      const recordTx = await delegatedContract.record(targetBlockRlp, targetProof.accountProof, {
+        gasLimit: 500000
+      });
+      await recordTx.wait();
+      console.log("✅ record() succeeded using BlockHashRecorder for old block!");
+      console.log("   Block age:", newBlockNum - targetBlockNum, "blocks (beyond 256 limit)");
+      console.log("   Nonce recorded:", targetProof.nonce);
+    } catch (error) {
+      console.log("❌ record() failed:", error.message);
+      throw error;
+    }
+
+    console.log("\n🎉 OLD BLOCK RECORDING VERIFIED!");
+    console.log("   ✅ Block hash recorded in BlockHashRecorder while recent");
+    console.log("   ✅ Mined", blocksToMine, "blocks to exceed 256 limit");
+    console.log("   ✅ record() successfully used BlockHashRecorder fallback");
+    console.log("   ✅ Old block verification works correctly");
   });
 
   it("should reject inheritance claim when EOA nonce changes (account still active)", async function () {
