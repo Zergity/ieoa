@@ -214,8 +214,7 @@ describe("EIP-7702 Delegation Test", function () {
     );
 
     // Get configuration values
-    const inheritorAddr = await delegatedContract.getInheritor();
-    const delayValue = await delegatedContract.getDelay();
+    const [inheritorAddr, delayValue] = await delegatedContract.getConfig();
 
     console.log("\n=== Delegated Contract Interaction ===");
     console.log("Reading from owner address as InheritableEOA contract");
@@ -227,8 +226,7 @@ describe("EIP-7702 Delegation Test", function () {
     expect(delayValue.toNumber()).to.equal(86400);
 
     console.log("\n✅ Contract interaction successful!");
-    console.log("   ✅ Can read inheritor from delegated contract");
-    console.log("   ✅ Can read delay from delegated contract");
+    console.log("   ✅ Can read config from delegated contract");
     console.log("   ✅ Values match what was set in setConfig");
   });
 
@@ -393,7 +391,7 @@ describe("EIP-7702 Delegation Test", function () {
     console.log("\n--- Step 6: Verify Inheritor Control ---");
 
     // Check claim status
-    const isClaimed = await delegatedContract.getIsClaimed();
+    const isClaimed = await delegatedContract.isClaimed();
     expect(isClaimed).to.be.true;
     console.log("Claimed status:", isClaimed);
 
@@ -659,7 +657,7 @@ describe("EIP-7702 Delegation Test", function () {
     // Step 6: Verify inheritance was NOT claimed
     console.log("\n--- Step 6: Verify Protection Works ---");
 
-    const isClaimed = await delegatedContract.getIsClaimed();
+    const isClaimed = await delegatedContract.isClaimed();
     expect(isClaimed).to.be.false;
     console.log("Claimed status:", isClaimed);
     expect(claimFailed).to.be.true;

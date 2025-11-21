@@ -20,11 +20,11 @@ contract InheritableEOA is BareAccount {
 
     // Storage variables that can only be changed by the EOA (address(this) in EIP-7702 context)
     address internal s_inheritor;
-    uint32 internal s_delay; // Delay in seconds
+    uint64 internal s_delay; // Delay in seconds
     bool internal s_claimed;
 
-    uint64 internal s_nonce; // Unused storage
-    uint64 internal s_timestamp; // Unused storage
+    uint64 internal s_nonce;
+    uint64 internal s_timestamp;
 
     // Custom errors
     error InvalidInheritor();
@@ -47,7 +47,7 @@ contract InheritableEOA is BareAccount {
     }
 
     // Events
-    event ConfigSet(address indexed inheritor, uint32 delay);
+    event ConfigSet(address indexed inheritor, uint64 delay);
     event NonceRecorded(uint64 nonce, uint64 timestamp);
     event InheritanceClaimed();
 
@@ -157,39 +157,39 @@ contract InheritableEOA is BareAccount {
      * @param inheritor Address that can inherit the account after delay (ignored if zero)
      * @param delay Time in seconds that must pass with unchanged nonce before inheritance (ignored if zero)
      */
-    function setConfig(address inheritor, uint32 delay) public onlyEoa {
+    function setConfig(address inheritor, uint256 delay) public onlyEoa {
+        if (inheritor == address(0) && delay == 0) {
+            // clear both settings
+            delete s_inheritor;
+            delete s_delay;
+        }
         if (inheritor != address(0)) {
             s_inheritor = inheritor;
         }
-        
+
         if (delay > 0) {
-            s_delay = delay;
+            require(delay <= type(uint64).max, "delay overflow");
+            // forge-lint: disable-next-line(unsafe-typecast)
+            s_delay = uint64(delay);
         }
-        
+
         emit ConfigSet(s_inheritor, s_delay);
     }
 
     /**
-     * @dev Get the inheritor address
-     * @return The address of the inheritor
+     * @dev Get the inheritor and delay configuration
+     * @return inheritor The address of the inheritor
+     * @return delay The delay in seconds
      */
-    function getInheritor() public view returns (address) {
-        return s_inheritor;
-    }
-
-    /**
-     * @dev Get the inheritance delay
-     * @return The delay in seconds
-     */
-    function getDelay() public view returns (uint256) {
-        return s_delay;
+    function getConfig() public view returns (address inheritor, uint256 delay) {
+        return (s_inheritor, s_delay);
     }
 
     /**
      * @dev Get the claimed status
      * @return True if inheritance has been claimed
      */
-    function getIsClaimed() public view returns (bool) {
+    function isClaimed() public view returns (bool) {
         return s_claimed;
     }
 
