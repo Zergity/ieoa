@@ -112,6 +112,8 @@ contract InheritableEOA is BareAccount {
         require(s_inheritor != address(0), InvalidInheritor());
         require(s_delay > 0, InvalidDelay());
         require(!s_claimed, "claimed");
+        // s_nonce > 0 is guaranteed because the account must have submitted at least
+        // the setConfig() transaction to configure inheritance, which increments the nonce
         require(s_nonce > 0, "!nonce");
 
         // Verify new block and get nonce + timestamp
@@ -172,17 +174,22 @@ contract InheritableEOA is BareAccount {
      * @dev Set the inheritor and delay configuration. Can only be called by the EOA (address(this) in EIP-7702)
      * @param inheritor Address that can inherit the account after delay (ignored if zero)
      * @param delay Time in seconds that must pass with unchanged nonce before inheritance (ignored if zero)
+     *
+     * @notice Partial update behavior:
+     *   - setConfig(addr, delay): sets both inheritor and delay
+     *   - setConfig(0, 0): clears both inheritor and delay
+     *   - setConfig(addr, 0): sets inheritor only, keeps existing delay
+     *   - setConfig(0, delay): sets delay only, keeps existing inheritor
      */
     function setConfig(address inheritor, uint256 delay) public onlyEoa {
         if (inheritor == address(0) && delay == 0) {
-            // clear both settings
+            // Clear both settings
             delete s_inheritor;
             delete s_delay;
         }
         if (inheritor != address(0)) {
             s_inheritor = inheritor;
         }
-
         if (delay > 0) {
             require(delay <= type(uint64).max, "delay overflow");
             // forge-lint: disable-next-line(unsafe-typecast)
