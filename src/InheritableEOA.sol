@@ -31,6 +31,8 @@ contract InheritableEOA is BareAccount {
     error InvalidDelay();
     error InheritanceNotReady();
     error NonceChanged();
+    error InvalidNonce(uint256 provided, uint256 required, string reason);
+    error InvalidTimestamp(uint256 provided, uint256 required, string reason);
 
     /**
      * @dev Constructor to set the immutable block hash recorder
@@ -82,10 +84,10 @@ contract InheritableEOA is BareAccount {
 
         // Check if we should update stored values
         if (nonce < s_nonce) {
-            revert("nonce smaller");
+            revert InvalidNonce(nonce, s_nonce, "nonce cannot decrease");
         }
         if (nonce == s_nonce && timestamp >= s_timestamp) {
-            revert("timestamp not newer");
+            revert InvalidTimestamp(timestamp, s_timestamp, "same nonce requires older block");
         }
         // casting to 'uint64' is safe because nonce is a standard Ethereum account nonce which fits in uint64
         // forge-lint: disable-next-line(unsafe-typecast)
