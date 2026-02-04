@@ -52,6 +52,7 @@ contract InheritableEOA is BareAccount {
     event ConfigSet(address indexed inheritor, uint64 delay);
     event NonceRecorded(uint64 nonce, uint64 timestamp);
     event InheritanceClaimed();
+    event ClaimReset();
 
     /**
      * @dev Internal function to check execution permissions
@@ -131,8 +132,21 @@ contract InheritableEOA is BareAccount {
         s_claimed = true;
         delete s_nonce;
         delete s_timestamp;
-        
+
         emit InheritanceClaimed();
+    }
+
+    /**
+     * @dev Reset the claimed status. Can only be called by the EOA.
+     *      Use this when the EOA becomes active again and wants to fully reset
+     *      the inheritance state, ensuring any new inheritor must wait the full delay.
+     */
+    function resetClaim() public onlyEoa {
+        s_claimed = false;
+        delete s_nonce;
+        delete s_timestamp;
+
+        emit ClaimReset();
     }
 
     /**
